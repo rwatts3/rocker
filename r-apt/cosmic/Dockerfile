@@ -1,21 +1,26 @@
 ## Emacs, make this -*- mode: sh; -*-
- 
-FROM ubuntu:xenial
+
+## there is a bionic/cosmic bug where it does not let us install tzdata without being interactive
+## (cf https://bugs.launchpad.net/ubuntu/+source/tzdata/+bug/1773687)
+## so we start from artful here, call sed below and run dist-upgrade the first opportunity
+FROM ubuntu:artful
 
 LABEL org.label-schema.license="GPL-2.0" \
-      org.label-schema.vcs-url="https://github.com/rocker-org/r-base" \
+      org.label-schema.vcs-url="https://github.com/rocker-org/r-apt" \
       org.label-schema.vendor="Rocker Project" \
       maintainer="Dirk Eddelbuettel <edd@debian.org>"
 
-## Set a default user. Available via runtime flag `--user docker` 
+## Set a default user. Available via runtime flag `--user docker`
 ## Add user to 'staff' group, granting them write privileges to /usr/local/lib/R/site.library
-## User should also have & own a home directory (for rstudio or linked volumes to work properly). 
+## User should also have & own a home directory (for rstudio or linked volumes to work properly).
 RUN useradd docker \
 	&& mkdir /home/docker \
 	&& chown docker:docker /home/docker \
 	&& addgroup docker staff
 
-RUN apt-get update \ 
+RUN sed -i -e 's/artful/cosmic/' /etc/apt/sources.list \
+        && apt-get update \
+        && apt-get dist-upgrade -y \
 	&& apt-get install -y --no-install-recommends \
 		software-properties-common \
                 ed \
@@ -24,8 +29,9 @@ RUN apt-get update \
 		vim-tiny \
 		wget \
 		ca-certificates \
-        && add-apt-repository --enable-source --yes "ppa:marutter/rrutter" \
-	&& add-apt-repository --enable-source --yes "ppa:marutter/c2d4u" 
+        && add-apt-repository --enable-source --yes "ppa:marutter/rrutter3.5"
+
+## no 'c2d4u' for cosmic    && add-apt-repository --enable-source --yes "ppa:marutter/c2d4u3.5"
 
 ## Configure default locale, see https://github.com/rocker-org/rocker/issues/19
 RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
@@ -35,9 +41,12 @@ RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
 ENV LC_ALL en_US.UTF-8
 ENV LANG en_US.UTF-8
 
-## Now install R and littler, and create a link for littler in /usr/local/bin
-## Default CRAN repo is now set by R itself, and littler knows about it too
-## r-cran-docopt is not currently in c2d4u so we install from source
+## This was not needed before but we need it now
+ENV DEBIAN_FRONTEND noninteractive
+
+# Now install R and littler, and create a link for littler in /usr/local/bin
+# Default CRAN repo is now set by R itself, and littler knows about it too
+# r-cran-docopt is not currently in c2d4u so we install from source
 RUN apt-get update \
         && apt-get install -y --no-install-recommends \
                  littler \
@@ -45,7 +54,7 @@ RUN apt-get update \
  		 r-base-dev \
  		 r-recommended \
                  r-cran-rcpp \
- 	&& ln -s /usr/lib/R/site-library/littler/examples/install.r /usr/local/bin/install.r \
+  	&& ln -s /usr/lib/R/site-library/littler/examples/install.r /usr/local/bin/install.r \
  	&& ln -s /usr/lib/R/site-library/littler/examples/install2.r /usr/local/bin/install2.r \
  	&& ln -s /usr/lib/R/site-library/littler/examples/installGithub.r /usr/local/bin/installGithub.r \
  	&& ln -s /usr/lib/R/site-library/littler/examples/testInstalled.r /usr/local/bin/testInstalled.r \

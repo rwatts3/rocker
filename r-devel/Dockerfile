@@ -6,6 +6,10 @@ FROM r-base:latest
 ## This handle reaches Carl and Dirk
 MAINTAINER "Carl Boettiger and Dirk Eddelbuettel" rocker-maintainers@eddelbuettel.com
 
+## Needed in case a base package has an interactive question
+## (as e.g. base-passwd in Oct 2020)
+ENV DEBIAN_FRONTEND noninteractive
+
 ## Remain current
 RUN apt-get update -qq \
 	&& apt-get dist-upgrade -y
@@ -91,9 +95,11 @@ RUN echo "R_LIBS=\${R_LIBS-'/usr/local/lib/R/site-library:/usr/local/lib/R/libra
 ## Set default CRAN repo
 RUN echo 'options(repos = c(CRAN = "https://cran.rstudio.com/"), download.file.method = "libcurl")' >> /usr/local/lib/R/etc/Rprofile.site
 
+## Copy 'checkbashisms' (as a local copy from devscripts package)
+COPY checkbashisms /usr/local/bin
+
 RUN cd /usr/local/bin \
 && mv R Rdevel \
 && mv Rscript Rscriptdevel \
 && ln -s Rdevel RD \
 && ln -s Rscriptdevel RDscript
-

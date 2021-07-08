@@ -1,9 +1,9 @@
 ## Emacs, make this -*- mode: sh; -*-
- 
-FROM ubuntu:xenial
+
+FROM ubuntu:bionic
 
 LABEL org.label-schema.license="GPL-2.0" \
-      org.label-schema.vcs-url="https://github.com/rocker-org/r-base" \
+      org.label-schema.vcs-url="https://github.com/rocker-org/r-ubuntu" \
       org.label-schema.vendor="Rocker Project" \
       maintainer="Dirk Eddelbuettel <edd@debian.org>"
 
@@ -15,17 +15,18 @@ RUN useradd docker \
 	&& chown docker:docker /home/docker \
 	&& addgroup docker staff
 
-RUN apt-get update \ 
+RUN apt-get update \
 	&& apt-get install -y --no-install-recommends \
 		software-properties-common \
+                dirmngr \
                 ed \
 		less \
 		locales \
 		vim-tiny \
 		wget \
 		ca-certificates \
-        && add-apt-repository --enable-source --yes "ppa:marutter/rrutter" \
-	&& add-apt-repository --enable-source --yes "ppa:marutter/c2d4u" 
+        && add-apt-repository --enable-source --yes "ppa:marutter/rrutter4.0" \
+        && add-apt-repository --enable-source --yes "ppa:c2d4u.team/c2d4u4.0+"
 
 ## Configure default locale, see https://github.com/rocker-org/rocker/issues/19
 RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
@@ -35,17 +36,22 @@ RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
 ENV LC_ALL en_US.UTF-8
 ENV LANG en_US.UTF-8
 
-## Now install R and littler, and create a link for littler in /usr/local/bin
-## Default CRAN repo is now set by R itself, and littler knows about it too
-## r-cran-docopt is not currently in c2d4u so we install from source
+## This was not needed before but we need it now
+ENV DEBIAN_FRONTEND noninteractive
+
+## Otherwise timedatectl will get called which leads to 'no systemd' inside Docker
+ENV TZ UTC
+
+# Now install R and littler, and create a link for littler in /usr/local/bin
+# Default CRAN repo is now set by R itself, and littler knows about it too
+# r-cran-docopt is not currently in c2d4u so we install from source
 RUN apt-get update \
         && apt-get install -y --no-install-recommends \
                  littler \
  		 r-base \
  		 r-base-dev \
  		 r-recommended \
-                 r-cran-rcpp \
- 	&& ln -s /usr/lib/R/site-library/littler/examples/install.r /usr/local/bin/install.r \
+  	&& ln -s /usr/lib/R/site-library/littler/examples/install.r /usr/local/bin/install.r \
  	&& ln -s /usr/lib/R/site-library/littler/examples/install2.r /usr/local/bin/install2.r \
  	&& ln -s /usr/lib/R/site-library/littler/examples/installGithub.r /usr/local/bin/installGithub.r \
  	&& ln -s /usr/lib/R/site-library/littler/examples/testInstalled.r /usr/local/bin/testInstalled.r \
